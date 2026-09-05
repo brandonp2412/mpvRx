@@ -3261,13 +3261,20 @@ class PlayerActivity :
       return
     }
 
-    extras.getInt("position", POSITION_NOT_SET).takeIf { it != POSITION_NOT_SET }?.let {
-      PlaybackSession.setPropertyInt("time-pos", it / MILLISECONDS_TO_SECONDS)
+    if (extras.containsKey("position")) {
+      val positionSeconds = extras.getInt("position").coerceAtLeast(0) / MILLISECONDS_TO_SECONDS.toDouble()
+      PlaybackSession.setPropertyDouble("time-pos", positionSeconds)
     }
 
     viewModel.setExternalSkipSegments(parseIntentSkipSegments(extras.getString("skip_segments")))
     addSubtitlesFromExtras(extras)
     setHttpHeadersFromExtras(extras)
+  }
+
+  private fun externalPositionRestoreOverride(extras: Bundle?): PlaybackPositionRestoreOverride? {
+    if (extras == null || !extras.containsKey("position")) return null
+    val positionSeconds = extras.getInt("position").coerceAtLeast(0) / MILLISECONDS_TO_SECONDS.toDouble()
+    return PlaybackPositionRestoreOverride(positionSeconds = positionSeconds, paused = false)
   }
 
   /**
@@ -5359,6 +5366,7 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?) {
     val requestedLegacyMediaIdentifier = legacyMediaIdentifier
     val requestedPlaylistIndex = playlistIndex
     val requestedQueueItem = PlaybackSession.queue.value.items.getOrNull(requestedPlaylistIndex)
+    val requestedPositionRestoreOverride = externalPositionRestoreOverride(sourceIntent.extras)
     val requestGeneration = mediaRequestGeneration
     val requestedSource = originalUri ?: extractUriFromIntent(sourceIntent)?.toString() ?: playableUri
     val requestedHeaders =
@@ -5551,6 +5559,7 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?) {
             attempt = 0,
             requestGeneration = requestGeneration,
             legacyMediaIdentifier = requestedLegacyMediaIdentifier.takeUnless { isTorrentRequest },
+            positionRestoreOverride = requestedPositionRestoreOverride,
           )
         } catch (error: CancellationException) {
           throw error
@@ -7956,11 +7965,6 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?) {
      * Constant for "brightness not set".
      */
     private const val BRIGHTNESS_NOT_SET = -1f
-
-    /**
-     * Constant used when playback position is not set.
-     */
-    private const val POSITION_NOT_SET = 0
 
     /**
      * Maximum volume for MPV in percent.
