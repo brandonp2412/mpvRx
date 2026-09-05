@@ -39,7 +39,7 @@ plugins {
 android {
   namespace = "app.gyrolet.mpvrx"
   compileSdk = 37
-  ndkVersion = "27.3.13750724"
+  ndkVersion = "27.0.12077973"
 
   defaultConfig {
     applicationId = "app.gyrolet.mpvrx"
@@ -118,6 +118,7 @@ android {
 
   buildTypes {
     named("release") {
+      signingConfig = signingConfigs.getByName("debug")
       buildConfigField("boolean", "IS_PREVIEW_BUILD", "false")
       isMinifyEnabled = true
       isShrinkResources = true
