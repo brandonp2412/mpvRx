@@ -61,6 +61,7 @@ class MPVView(
   var isExiting = false
   var forceOpenGlFallback = false
   var forceSoftwareDecode = false
+  var forcedHwdecMode: String? = null
   var isSurfaceReady = false
     private set
   var onSurfaceReady: (() -> Unit)? = null
@@ -79,7 +80,7 @@ class MPVView(
     MpvConfigOverridePolicy.configure(advancedPreferences.mpvConfOverrides.get())
     val requestedBackend = selectRenderBackend(ignoreForcedOpenGlFallback = true)
     val coreConfigurationKey =
-      "${requestedBackend.configurationKey}|swdec=$forceSoftwareDecode|conf=${MpvConfigOverridePolicy.configurationKey()}"
+      "${requestedBackend.configurationKey}|swdec=$forceSoftwareDecode|hwdec=${forcedHwdecMode.orEmpty()}|conf=${MpvConfigOverridePolicy.configurationKey()}"
     val result =
       PlaybackSession.initialize(
         context = context.applicationContext,
@@ -187,7 +188,7 @@ class MPVView(
     PlaybackSession.setOptionString("profile", profile)
     val backend = selectRenderBackend()
     val useVulkan = backend.gpuApi == "vulkan"
-    val hwdecMode = if (forceSoftwareDecode) "no" else preferredHwdecMode(useVulkan)
+    val hwdecMode = forcedHwdecMode ?: if (forceSoftwareDecode) "no" else preferredHwdecMode(useVulkan)
     PlaybackSession.setVideoOutput(backend.vo)
     PlaybackSession.setOptionString("gpu-api", backend.gpuApi)
     PlaybackSession.setOptionString("gpu-context", backend.gpuContext)

@@ -631,7 +631,9 @@ class PlayerActivity :
     isSecureFolderLaunch = intent.getStringExtra("launch_source") == "secure_folder"
     applyInitialVideoOrientation(intent)
     setContentView(binding.root)
-    player.forceSoftwareDecode = intent.getByteExtra("decode_mode", 0).toInt() == 2
+    val externalDecodeMode = intent.getByteExtra("decode_mode", 0).toInt()
+    player.forceSoftwareDecode = externalDecodeMode == 2
+    player.forcedHwdecMode = if (externalDecodeMode == 1) "mediacodec-copy,no" else null
     setupSystemBarsAutoHide()
     setupPipHelper()
 
