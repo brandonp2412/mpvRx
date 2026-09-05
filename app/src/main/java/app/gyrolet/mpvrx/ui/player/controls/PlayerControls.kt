@@ -150,6 +150,8 @@ import app.gyrolet.mpvrx.ui.player.controls.components.LocalForceDarkPlayerButto
 import app.gyrolet.mpvrx.ui.player.controls.components.LocalHidePlayerButtonsBackground
 import app.gyrolet.mpvrx.ui.player.controls.components.MediaScopesOverlay
 import app.gyrolet.mpvrx.ui.player.controls.components.MultipleSpeedPlayerUpdate
+import app.gyrolet.mpvrx.ui.player.controls.components.ResumePlaybackPromptDialog
+import app.gyrolet.mpvrx.ui.player.controls.components.ResumedFromPlayerUpdate
 import app.gyrolet.mpvrx.ui.player.controls.components.SeekPlayerUpdate
 import app.gyrolet.mpvrx.ui.player.controls.components.SeekbarWithTimers
 import app.gyrolet.mpvrx.ui.player.controls.components.SlideToUnlock
@@ -782,6 +784,7 @@ fun PlayerControls(
           val showZoomLevelOverlay by playerPreferences.showZoomLevelOverlay.collectAsState()
           val showRepeatShuffleOverlay by playerPreferences.showRepeatShuffleOverlay.collectAsState()
           val showActionFeedbackOverlay by playerPreferences.showActionFeedbackOverlay.collectAsState()
+          val showResumeIndicatorOverlay by playerPreferences.showResumeIndicatorOverlay.collectAsState()
           val showProviderStatusOverlay by playerPreferences.showProviderStatusOverlay.collectAsState()
 
           // Determines whether the center action-pill should be visible for the current update.
@@ -798,6 +801,7 @@ fun PlayerControls(
               is PlayerUpdates.Shuffle -> showRepeatShuffleOverlay
               is PlayerUpdates.ShowText -> showActionFeedbackOverlay
               is PlayerUpdates.ProviderStatusText -> showProviderStatusOverlay
+              is PlayerUpdates.ResumedFrom -> showResumeIndicatorOverlay
               is PlayerUpdates.HorizontalSeek -> showActionFeedbackOverlay
               is PlayerUpdates.FrameInfo -> true // Groups 3/4 — not in scope
               is PlayerUpdates.None -> false
@@ -813,7 +817,8 @@ fun PlayerControls(
             ) {
               return@LaunchedEffect
             }
-            delay(2000)
+            val dismissDelay = if (currentPlayerUpdate is PlayerUpdates.ResumedFrom) 4000L else 2000L
+            delay(dismissDelay)
             viewModel.playerUpdate.update { PlayerUpdates.None }
           }
 
@@ -953,7 +958,18 @@ fun PlayerControls(
                 TextPlayerUpdate(text)
               }
 
-              is PlayerUpdates.FrameInfo -> {
+is PlayerUpdates.ResumedFrom -> {
+  val resumedUpdate = currentPlayerUpdate as PlayerUpdates.ResumedFrom
+  ResumedFromPlayerUpdate(
+    position = resumedUpdate.position,
+    onRestart = {
+      viewModel.playerUpdate.value = PlayerUpdates.None
+      viewModel.restartFromBeginning()
+    },
+  )
+}
+
+is PlayerUpdates.FrameInfo -> {
                 val frameInfo = (currentPlayerUpdate as PlayerUpdates.FrameInfo)
                 val text =
                   if (frameInfo.totalFrames > 0) {
@@ -1939,7 +1955,17 @@ fun PlayerControls(
       onDismissRequest = { onOpenPanel(Panels.None) },
     )
 
-    val activePlayerDrawerButtons =
+val resumePrompt by viewModel.resumePrompt.collectAsState()
+resumePrompt?.let { promptData ->
+  ResumePlaybackPromptDialog(
+    promptData = promptData,
+    onConfirmResume = { pos -> viewModel.confirmResume(pos) },
+    onRestart = { viewModel.restartFromBeginning() },
+    onDismiss = { viewModel.dismissResumePrompt() },
+  )
+}
+
+val activePlayerDrawerButtons =
       remember(
         isSpeedNonOne,
         currentZoom,

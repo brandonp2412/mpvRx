@@ -27,7 +27,31 @@ enum class PlayerOrientation(
   SensorLandscape(R.string.pref_player_orientation_sensor_landscape),
 }
 
+enum class ResumePlaybackMode(
+  @StringRes val titleRes: Int,
+  @StringRes val summaryRes: Int,
+) {
+  Always(
+    R.string.pref_player_resume_mode_always,
+    R.string.pref_player_resume_mode_always_summary,
+  ),
+  Ask(
+    R.string.pref_player_resume_mode_ask,
+    R.string.pref_player_resume_mode_ask_summary,
+  ),
+  Never(
+    R.string.pref_player_resume_mode_never,
+    R.string.pref_player_resume_mode_never_summary,
+  ),
+}
+
+data class ResumePromptData(
+  val position: Int,
+  val duration: Int = 0,
+)
+
 enum class VideoAspect(
+
   @StringRes val titleRes: Int,
 ) {
   Crop(R.string.player_aspect_crop),
@@ -170,6 +194,10 @@ sealed class PlayerUpdates {
 
   data class ProviderStatusText(
     val value: String,
+  ) : PlayerUpdates()
+
+  data class ResumedFrom(
+    val position: Int,
   ) : PlayerUpdates()
 
   data class RepeatMode(

@@ -4864,16 +4864,40 @@ class PlayerActivity :
     viewModel.setVideoZoom(state.videoZoom)
   }
 
-  private fun restorePlaybackPosition(state: PlaybackStateEntity?) {
-    if (state != null &&
-      playerPreferences.savePositionOnQuit.get() &&
-      state.lastPosition != 0 &&
-      !viewModel.isAudioOnly.value &&
-      !isCurrentMediaKnownAudio()
-    ) {
+private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?) {
+  if (state == null || viewModel.isAudioOnly.value || isCurrentMediaKnownAudio()) return
+
+  val resumeMode = playerPreferences.resumePlaybackMode.get()
+  val hasValidSavedPosition = state.lastPosition > 3
+
+  when {
+    !playerPreferences.savePositionOnQuit.get() ||
+      resumeMode == ResumePlaybackMode.Never ||
+      !hasValidSavedPosition -> {
+      PlaybackSession.setPropertyInt("time-pos", 0)
+    }
+
+    resumeMode == ResumePlaybackMode.Ask -> {
+      PlaybackSession.setPropertyInt("time-pos", 0)
+      PlaybackSession.setPropertyBoolean("pause", true)
+      withContext(Dispatchers.Main) {
+        viewModel.showResumePrompt(
+          state.lastPosition,
+          state.timeRemaining + state.lastPosition,
+        )
+      }
+    }
+
+    resumeMode == ResumePlaybackMode.Always -> {
       PlaybackSession.setPropertyInt("time-pos", state.lastPosition)
+      withContext(Dispatchers.Main) {
+        if (playerPreferences.showResumeIndicatorOverlay.get()) {
+          viewModel.playerUpdate.value = PlayerUpdates.ResumedFrom(state.lastPosition)
+        }
+      }
     }
   }
+}
 
   /**
    * Applies default settings when no saved state exists.
