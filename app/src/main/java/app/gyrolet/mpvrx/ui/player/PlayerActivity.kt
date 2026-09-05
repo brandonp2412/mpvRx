@@ -631,6 +631,7 @@ class PlayerActivity :
     isSecureFolderLaunch = intent.getStringExtra("launch_source") == "secure_folder"
     applyInitialVideoOrientation(intent)
     setContentView(binding.root)
+    player.forceSoftwareDecode = intent.getByteExtra("decode_mode", 0).toInt() == 2
     setupSystemBarsAutoHide()
     setupPipHelper()
 
@@ -3255,12 +3256,16 @@ class PlayerActivity :
    * @param extras Bundle containing intent extras
    */
   private fun setIntentExtras(extras: Bundle?) {
-    if (extras == null) return
+    if (extras == null) {
+      viewModel.setExternalSkipSegments(emptyList())
+      return
+    }
 
     extras.getInt("position", POSITION_NOT_SET).takeIf { it != POSITION_NOT_SET }?.let {
       PlaybackSession.setPropertyInt("time-pos", it / MILLISECONDS_TO_SECONDS)
     }
 
+    viewModel.setExternalSkipSegments(parseIntentSkipSegments(extras.getString("skip_segments")))
     addSubtitlesFromExtras(extras)
     setHttpHeadersFromExtras(extras)
   }
