@@ -435,6 +435,7 @@ class PlayerViewModel : ViewModel(),
   val skipSegments: StateFlow<List<SkipSegment>> = _skipSegments.asStateFlow()
 
   @Volatile private var skipSegmentsSnapshot: List<SkipSegment> = emptyList()
+  private var externalIntentSegments: List<SkipSegment> = emptyList()
 
   private val _currentSkippableSegment = MutableStateFlow<SkipSegment?>(null)
   val currentSkippableSegment: StateFlow<SkipSegment?> = _currentSkippableSegment.asStateFlow()
@@ -2077,6 +2078,7 @@ val isBrightnessSliderShown = MutableStateFlow(false)
     _preciseDuration.value = 0f
     chapterDerivedSegments = emptyList()
     introDbSegments = emptyList()
+    externalIntentSegments = emptyList()
     skipSegmentsSnapshot = emptyList()
     _skipSegments.value = emptyList()
     _currentSkippableSegment.value = null
@@ -3214,8 +3216,13 @@ val isBrightnessSliderShown = MutableStateFlow(false)
     showToast(if (auto) "${segment.label} (auto)" else segment.label)
   }
 
+  fun setExternalSkipSegments(segments: List<SkipSegment>) {
+    externalIntentSegments = SkipMarkerResolver.merge(segments)
+    mergeSkipSegments()
+  }
+
   private fun mergeSkipSegments() {
-    val merged = SkipMarkerResolver.merge(resolveIntroDbSegments() + chapterDerivedSegments)
+    val merged = SkipMarkerResolver.merge(externalIntentSegments + resolveIntroDbSegments() + chapterDerivedSegments)
     skipSegmentsSnapshot = merged
     _skipSegments.value = merged
   }
